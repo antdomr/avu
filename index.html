@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEOINT Av. Universidad — Prospección Automotriz CDMX</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0b0f14; --panel:#121820; --card:#171e28; --border:#2a3441;
+  --text:#e8edf4; --muted:#8b9cb3;
+  --alta:#ff5c33; --media:#f0b429; --baja:#5b8def; --accent:#3dd68c;
+  --shadow:0 8px 28px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;min-height:100vh}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:1.5rem;padding:1.1rem 1.5rem .9rem;background:linear-gradient(180deg,#151c26,var(--bg));border-bottom:1px solid var(--border)}
+.topbar h1{font-size:clamp(1.1rem,2.2vw,1.5rem);font-weight:700;letter-spacing:-.02em}
+.topbar .sub{color:var(--muted);font-size:.78rem;margin-top:.3rem;max-width:48rem}
+.topbar-actions{display:flex;gap:.45rem;flex-wrap:wrap}
+.topbar-actions button,.chip-btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:999px;padding:.42rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer}
+.topbar-actions button:hover,.chip-btn:hover{border-color:var(--accent);color:var(--accent)}
+.chip-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(61,214,140,.08)}
+.exec{padding:.85rem 1.5rem;background:var(--panel);border-bottom:1px solid var(--border);font-size:.82rem;color:#c5cfdb}
+.exec strong{color:#fff}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.55rem;padding:.85rem 1.5rem;background:#0e131a;border-bottom:1px solid var(--border)}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.65rem .75rem}
+.stat .lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stat .val{font-size:1.2rem;font-weight:700;margin-top:.1rem;font-family:"IBM Plex Mono",monospace}
+.stat .val.alta{color:var(--alta)}.stat .val.media{color:var(--media)}.stat .val.baja{color:var(--baja)}.stat .val.accent{color:var(--accent)}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border-bottom:1px solid var(--border);background:#0e131a}
+.controls .group{display:flex;align-items:center;gap:.35rem}
+.controls label{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.controls select,.controls input[type=search],.controls input[type=number]{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem .55rem;font-size:.76rem;min-height:34px}
+.controls input[type=search]{min-width:180px;flex:1 1 160px;max-width:260px}
+.controls input[type=number]{width:72px}
+.toggle{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:.32rem .65rem;cursor:pointer}
+.toggle.on{border-color:rgba(61,214,140,.45);color:var(--accent)}
+.toggle input{accent-color:var(--accent)}
+.map-section{border-bottom:1px solid var(--border)}
+.map-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.85rem 1.5rem .55rem;flex-wrap:wrap}
+.map-head h2{font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:.45rem}
+.map-head h2::before{content:"";width:4px;height:1em;background:var(--accent);border-radius:2px}
+.legend-inline{display:flex;flex-wrap:wrap;gap:.75rem;font-size:.72rem;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.alta{background:var(--alta);box-shadow:0 0 8px var(--alta)}
+.dot.media{background:var(--media);box-shadow:0 0 8px var(--media)}
+.dot.baja{background:var(--baja);box-shadow:0 0 8px var(--baja)}
+#map{width:100%;height:min(56vh,600px);min-height:360px;background:#111;border-top:1px solid var(--border)}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+.leaflet-popup-tip{background:var(--panel)}
+.popup h3{font-size:.9rem;margin-bottom:.3rem}.popup p{font-size:.74rem;color:var(--muted);margin:.1rem 0}.popup a{color:var(--accent)}
+.layout{display:grid;grid-template-columns:1fr;gap:0}
+.panel{padding:1.1rem 1.5rem 1.4rem;border-bottom:1px solid var(--border)}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin-bottom:.9rem;flex-wrap:wrap}
+.panel-head h2{font-size:1rem;font-weight:600;display:flex;align-items:center;gap:.45rem}
+.panel-head h2::before{content:"";width:4px;height:1.05em;background:var(--accent);border-radius:2px}
+.panel-head .hint{font-size:.72rem;color:var(--muted)}
+.cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.85rem}
+.agency-card{background:#161c25;border:1px solid var(--border);border-left:4px solid var(--baja);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.35rem;transition:transform .12s,box-shadow .12s}
+.agency-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.agency-card.Alta{border-left-color:var(--alta)}.agency-card.Media{border-left-color:var(--media)}.agency-card.Baja{border-left-color:var(--baja)}
+.agency-card.active{outline:1px solid var(--accent)}
+.agency-card .row1{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start}
+.agency-card .title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.agency-card .score{font-family:"IBM Plex Mono",monospace;font-weight:800;font-size:.95rem;border-radius:8px;padding:.2rem .45rem;background:rgba(255,255,255,.08)}
+.agency-card.Alta .score{background:rgba(255,92,51,.95)}.agency-card.Media .score{background:rgba(240,180,41,.95);color:#1a1406}.agency-card.Baja .score{background:rgba(91,141,239,.95)}
+.badge{display:inline-block;font-size:.6rem;font-weight:700;text-transform:uppercase;padding:.14rem .4rem;border-radius:5px}
+.badge.Alta{background:var(--alta)}.badge.Media{background:var(--media);color:#1a1406}.badge.Baja{background:var(--baja)}
+.meta{font-size:.74rem;color:#c5cfdb}.muted{color:var(--muted);font-size:.72rem;line-height:1.4}
+.card-actions{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.card-actions a,.card-actions button, .btn{background:rgba(61,214,140,.08);border:1px solid rgba(61,214,140,.3);color:var(--accent);border-radius:8px;padding:.35rem .6rem;font-size:.7rem;font-weight:600;cursor:pointer;text-decoration:none}
+.card-actions select,.card-actions textarea{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem;font-size:.72rem;margin-top:.35rem}
+.card-actions textarea{min-height:56px;resize:vertical}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+th,td{padding:.5rem .55rem;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+th{background:#141b24;color:var(--muted);font-weight:600;cursor:pointer;position:sticky;top:0}
+tr:hover td{background:rgba(255,255,255,.03)}
+.routes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.65rem}
+.route-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.8rem;cursor:pointer}
+.route-card:hover{border-color:var(--accent)}
+.route-card h4{font-size:.82rem;margin-bottom:.3rem}
+.route-card p{font-size:.72rem;color:var(--muted)}
+.method{font-size:.78rem;color:#a9b6c8;max-width:70rem}
+footer{padding:1rem 1.5rem 1.5rem;font-size:.7rem;color:var(--muted)}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.cards-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.cards-grid{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}#map{height:48vh;min-height:300px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>GEOINT Comercial — Av. Universidad, CDMX</h1>
+    <p class="sub">Prospección B2B · WhatsApp Automatizado y Agente Telefónico IA · Setup $49,800 + $35,000/mes · Actualizado 2026-07-15</p>
+  </div>
+  <div class="topbar-actions">
+    <button type="button" id="btn-fit">Ajustar mapa</button>
+    <button type="button" id="btn-reset">Restablecer filtros</button>
+    <button type="button" id="btn-csv">Exportar CSV</button>
+  </div>
+</header>
+
+<section class="exec" id="exec-summary"></section>
+
+<div class="stats">
+  <div class="stat"><div class="lbl">Visibles</div><div class="val accent" id="s-total">0</div></div>
+  <div class="stat"><div class="lbl">Alta</div><div class="val alta" id="s-alta">0</div></div>
+  <div class="stat"><div class="lbl">Media</div><div class="val media" id="s-media">0</div></div>
+  <div class="stat"><div class="lbl">Baja</div><div class="val baja" id="s-baja">0</div></div>
+  <div class="stat"><div class="lbl">Postventa</div><div class="val" id="s-pv">0</div></div>
+  <div class="stat"><div class="lbl">WhatsApp</div><div class="val" id="s-wa">0</div></div>
+  <div class="stat"><div class="lbl">Citas online</div><div class="val" id="s-citas">0</div></div>
+  <div class="stat"><div class="lbl">Potencial voz</div><div class="val" id="s-voz">0</div></div>
+  <div class="stat"><div class="lbl">Ambas soluciones</div><div class="val" id="s-ambas">0</div></div>
+  <div class="stat"><div class="lbl">Grupos</div><div class="val" id="s-grupos">0</div></div>
+  <div class="stat"><div class="lbl">Puntaje prom.</div><div class="val accent" id="s-avg">0</div></div>
+  <div class="stat"><div class="lbl">Cap. alta</div><div class="val" id="s-caph">0</div></div>
+</div>
+
+<div class="controls" id="filters">
+  <input id="q" type="search" placeholder="Buscar nombre, marca o grupo…">
+  <div class="group"><label>Prioridad</label><select id="f-pri"><option value="">Todas</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
+  <div class="group"><label>Marca</label><select id="f-marca"><option value="">Todas</option></select></div>
+  <div class="group"><label>Grupo</label><select id="f-grupo"><option value="">Todos</option></select></div>
+  <div class="group"><label>Capacidad</label><select id="f-cap"><option value="">Todas</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
+  <div class="group"><label>Solución</label><select id="f-sol"><option value="">Todas</option><option>WhatsApp Automatizado</option><option>Agente Telefónico de IA</option><option>Ambas</option><option>Baja afinidad</option></select></div>
+  <div class="group"><label>Cluster</label><select id="f-cluster"><option value="">Todos</option></select></div>
+  <div class="group"><label>Confianza</label><select id="f-conf"><option value="">Todas</option><option>Alto</option><option>Medio</option><option>Bajo</option></select></div>
+  <div class="group"><label>Puntaje ≥</label><input id="f-score" type="number" min="0" max="100" value="0"></div>
+  <label class="toggle" id="t-venta"><input type="checkbox" id="f-venta"> Venta</label>
+  <label class="toggle" id="t-semi"><input type="checkbox" id="f-semi"> Seminuevos</label>
+  <label class="toggle" id="t-pv"><input type="checkbox" id="f-pv"> Postventa</label>
+  <label class="toggle" id="t-taller"><input type="checkbox" id="f-taller"> Taller</label>
+  <label class="toggle" id="t-ref"><input type="checkbox" id="f-ref"> Refacciones</label>
+  <label class="toggle" id="t-citas"><input type="checkbox" id="f-citas"> Citas</label>
+  <label class="toggle" id="t-wa"><input type="checkbox" id="f-wa"> WhatsApp</label>
+  <div class="quick" style="display:flex;gap:.35rem;flex-wrap:wrap">
+    <button type="button" class="chip-btn" data-quick="alta">Solo Alta</button>
+    <button type="button" class="chip-btn" data-quick="xoco">Cluster Xoco</button>
+    <button type="button" class="chip-btn" data-quick="autofin">Autofin</button>
+  </div>
+</div>
+
+<section class="map-section">
+  <div class="map-head">
+    <h2>Mapa + heatmap comercial</h2>
+    <div class="legend-inline">
+      <span><i class="dot alta"></i> Prioridad alta</span>
+      <span><i class="dot media"></i> Media</span>
+      <span><i class="dot baja"></i> Baja</span>
+      <span>Heatmap = intensidad por puntaje</span>
+    </div>
+  </div>
+  <div id="map"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Cards comerciales <span class="hint" id="cards-count"></span></h2>
+  </div>
+  <div class="cards-grid" id="cards"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Ranking / tabla maestra</h2>
+    <span class="hint">Clic en encabezado para ordenar · búsqueda sincronizada con filtros</span>
+  </div>
+  <div class="table-wrap">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th data-k="ranking">#</th>
+          <th data-k="puntaje">Pts</th>
+          <th data-k="prioridad">Pri</th>
+          <th data-k="nombre">Agencia</th>
+          <th data-k="marca">Marca</th>
+          <th data-k="grupo">Grupo</th>
+          <th data-k="solucion">Solución</th>
+          <th data-k="capacidad">Capacidad</th>
+          <th data-k="cluster">Cluster</th>
+          <th data-k="confianza">Conf.</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Rutas sugeridas</h2></div>
+  <div class="routes-grid" id="routes"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Metodología y fuentes</h2></div>
+  <div class="method" id="method"></div>
+</section>
+
+<footer>
+  Solo información pública · No inventar datos · Inferencias etiquetadas · Notas/estados en localStorage · Leaflet + OSM/Carto dark · 2026-07-15
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+const DATA = {"meta": {"titulo": "GEOINT Comercial — Agencias Automotrices Av. Universidad, CDMX", "fecha_consulta": "2026-07-15", "punto_referencia": {"lat": 19.3658558, "lng": -99.1706979, "maps_search": "https://www.google.com/maps/search/agencias+automotricres+en+avenida+universidad/@19.3658558,-99.1706979,17z"}, "inversion_referencia": {"whatsapp_setup_mxn": 49800, "whatsapp_mensual_mxn": 35000, "voz_setup_mxn": 49800, "voz_mensual_mxn": 35000}, "metodologia_scoring": {"necesidad_operativa": "0-25", "capacidad_inversion": "0-25", "afinidad_soluciones": "0-20", "accesibilidad_comercial": "0-15", "potencial_expansion": "0-10", "conveniencia_geografica": "0-5"}, "limitaciones": ["Reseñas Google tomadas de agregadores públicos cuando el scraping directo no fue posible; validar en Maps el día de visita.", "Algunos sitios devolvieron HTTP 403/400; datos vía SEMOVI y directorios de marca.", "Coordenadas: mixtas OSM house-number + interpolación; margen de error ~50–150 m en puntos aproximados.", "Rutas por proximidad y prioridad comercial; no optimizadas con algoritmo TSP."]}, "agencias": [{"id": "UNI-04", "nombre": "Nissan Cobama Universidad (Soni)", "marca": "Nissan", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Grupo Autos Soni", "grupo_confirmado": "Sí", "direccion": "Eje 8 Sur Av. Popocatépetl 512 (entre Universidad y Cuauhtémoc), Col. Xoco, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.3658, "lng": -99.1672, "sitio_web": "https://www.nissanuniversidad.com/", "pagina_sucursal": "https://www.nissanuniversidad.com/horarios-y-direcciones", "telefono": "55 7965 1457", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–19:00; Sáb 9:00–18:00; Dom 10:00–17:00", "horario_servicio": "L–V 7:00–17:00; Sáb 9:00–14:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "~2,568", "calificacion": "3.9", "periodo_reseñas": "Agregador twopos.mx; validar en Maps", "evidencias_dolor": "Calificación ~3.9 (menor al cluster); múltiples teléfonos (nuevos/seminuevos/servicio/refacciones) indican fragmentación de canales. Razón social SEMOVI: SONI UNIVERSIDAD. Sitio confirma pertenencia a Grupo Autos Soni.", "capacidad": "Alta", "scores": {"necesidad": 21, "capacidad": 22, "afinidad": 17, "acceso": 12, "expansion": 9, "geo": 5}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Director de Operaciones del grupo", "dolor_probable": "Por la multiplicidad de líneas telefónicas y el volumen de reseñas, podría existir oportunidad de enrutar y calificar llamadas/WhatsApp hacia ventas, servicio y refacciones.", "argumento": "Por la operación de Nissan Soni en Xoco y la red del grupo, sería valioso revisar cómo dan continuidad a citas y leads cuando el equipo de servicio está ocupado.", "fuentes": ["https://www.nissanuniversidad.com/nuestra-agencia", "https://www.nissanuniversidad.com/horarios-y-direcciones", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 86, "prioridad": "Alta", "distancia_m": 367, "distancia_txt": "~367 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Nissan%20Cobama%20Universidad%20%28Soni%29%20Eje%208%20Sur%20Av.%20Popocat%C3%A9petl%20512%20%28entre%20Universidad%20y%20Cuauht%C3%A9moc%29%2C%20Col.%20Xoco%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 1}, {"id": "UNI-05", "nombre": "Mazda Universidad (Pasión / Autofin)", "marca": "Mazda", "tipo_operacion": "Nuevos, seminuevos, servicio", "grupo": "Grupo Autofin — Grupo Pasión", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1090, Col. Xoco, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.36485, "lng": -99.16895, "sitio_web": "https://www.mazda.mx/distribuidores/mazda-universidad/", "pagina_sucursal": "https://www.mazda.mx/distribuidores/mazda-universidad/nosotros", "telefono": "55 5623 6593", "whatsapp_detectado": "No", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Humano/bot no identificado (widget en mazda.mx)", "horario_ventas": "L–V 9:00–20:00; Sáb 9:00–18:00; Dom 10:00–18:00", "horario_servicio": "L–V 7:00–17:00; Sáb 8:00–17:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "No confirmado", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Grupo Autofin confirma Mazda Pasión Del Valle Suc. Universidad. Chat y cita de servicio en ficha oficial. Sin WhatsApp publicado. Alto potencial de expansión multi-sucursal Autofin.", "capacidad": "Alta", "scores": {"necesidad": 17, "capacidad": 24, "afinidad": 16, "acceso": 11, "expansion": 10, "geo": 5}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Director de Postventa del grupo / Gerente de CRM", "dolor_probable": "Por pertenecer a Autofin y operar postventa con chat web, existe potencial para estandarizar WhatsApp y voz a nivel grupo Pasión/Furia/Samurái.", "argumento": "Por la red Autofin y la operación de Mazda Universidad, sería valioso revisar un piloto de atención omnicanal replicable en otras sucursales del grupo.", "fuentes": ["https://www.mazda.mx/distribuidores/mazda-universidad/nosotros", "https://grupoautofin.com/unidad-automotriz"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 83, "prioridad": "Alta", "distancia_m": 215, "distancia_txt": "~215 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Mazda%20Universidad%20%28Pasi%C3%B3n%20/%20Autofin%29%20Av.%20Universidad%201090%2C%20Col.%20Xoco%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 2}, {"id": "UNI-03", "nombre": "Toyota Universidad", "marca": "Toyota", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Automotriz Toy (GTU) — grupo corporativo no confirmado públicamente", "grupo_confirmado": "No confirmado", "direccion": "Av. Universidad 1112, Col. Xoco, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.3641781, "lng": -99.1687909, "sitio_web": "https://www.toyotauniversidad.mx/", "pagina_sucursal": "https://www.toyotauniversidad.mx/hours.aspx", "telefono": "55 3000 3300", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–20:00; Sáb 9:00–18:00; Dom 10:00–18:00", "horario_servicio": "L–V 7:00–19:00; Sáb 7:00–14:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "~3,050–3,090", "calificacion": "4.1", "periodo_reseñas": "Agregadores públicos; validar en Maps", "evidencias_dolor": "Volumen muy alto de reseñas. Agregadores secundarios reportan menciones de taller saturado/ocupado (confianza media; validar en Maps). Preferencia WhatsApp en formulario sin número central publicado.", "capacidad": "Alta", "scores": {"necesidad": 22, "capacidad": 21, "afinidad": 18, "acceso": 12, "expansion": 5, "geo": 5}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Gerente de Servicio", "dolor_probable": "Por el alto volumen aparente de postventa, podría existir saturación en agendamiento y seguimiento de citas por teléfono y WhatsApp.", "argumento": "Por la operación de postventa en Toyota Universidad, sería valioso revisar cómo gestionan picos de llamadas y confirmación de citas fuera del horario de taller.", "fuentes": ["https://www.toyotauniversidad.mx/", "https://www.toyotauniversidad.mx/hours.aspx", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 83, "prioridad": "Alta", "distancia_m": 274, "distancia_txt": "~274 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Toyota%20Universidad%20Av.%20Universidad%201112%2C%20Col.%20Xoco%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 3}, {"id": "UNI-08", "nombre": "Chevrolet El Trébol Universidad", "marca": "Chevrolet", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones, EV", "grupo": "El Trébol Automotriz (grupo no confirmado a nivel nacional en esta ronda)", "grupo_confirmado": "No confirmado", "direccion": "Av. Universidad 1144, Col. Xoco, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.3633652, "lng": -99.1694292, "sitio_web": "https://www.chevroleteltreboluniversidad.com.mx/", "pagina_sucursal": "https://www.chevroleteltreboluniversidad.com.mx/ayuda/acerca-de-nosotros", "telefono": "55 2510 6190", "whatsapp_detectado": "Sí", "whatsapp_url": "https://wa.me/525599628219", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "No confirmado en sitio oficial", "horario_servicio": "No confirmado en sitio oficial", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "~264", "calificacion": "4.1", "periodo_reseñas": "Agregador concesionariosdeautos; validar en Maps", "evidencias_dolor": "WhatsApp Ventas 55-9962-8219 y WhatsApp Servicio 55-1436-5213 publicados en home. Canales WA separados = afinidad alta a automatización. Nota: misma numeración 1144 que JAC (SEMOVI); validar locales en visita.", "capacidad": "Alta", "scores": {"necesidad": 20, "capacidad": 18, "afinidad": 19, "acceso": 13, "expansion": 5, "geo": 5}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Gerente de BDC", "dolor_probable": "Al publicar WhatsApp separados de ventas y servicio, podría existir oportunidad de unificar, calificar y dar continuidad fuera de horario.", "argumento": "Por los WhatsApp de ventas y servicio ya publicados en El Trébol Universidad, sería valioso revisar automatización y cobertura cuando el equipo no puede responder al instante.", "fuentes": ["https://www.chevroleteltreboluniversidad.com.mx/", "https://www.sociosdenegociogm.com.mx/localiza-a-un-distribuidor/"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 80, "prioridad": "Alta", "distancia_m": 307, "distancia_txt": "~307 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Chevrolet%20El%20Tr%C3%A9bol%20Universidad%20Av.%20Universidad%201144%2C%20Col.%20Xoco%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 4}, {"id": "UNI-01", "nombre": "Honda Universidad", "marca": "Honda", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Grupo Superautos", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1095, Col. Del Valle Centro, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3645344, "lng": -99.1692212, "sitio_web": "https://www.hondauniversidad.mx/", "pagina_sucursal": "https://www.hondauniversidad.mx/horarios-y-direcciones", "telefono": "55 1087 8872", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "No identificado", "horario_ventas": "L–V 9:00–20:00; Sáb 9:00–18:00; Dom 10:00–18:00", "horario_servicio": "L–V 7:00–19:00; Sáb 7:00–15:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "~1,070", "calificacion": "4.1", "periodo_reseñas": "Agregador público (concesionariosdeautos); validar en Maps el día de visita", "evidencias_dolor": "Alto volumen de reseñas y postventa activa con citas en línea; formulario permite preferencia WhatsApp sin número central publicado (posible fragmentación). Patrones de reseñas detallados: No disponibles vía scraping directo.", "capacidad": "Alta", "scores": {"necesidad": 18, "capacidad": 20, "afinidad": 17, "acceso": 12, "expansion": 7, "geo": 5}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Gerente General", "dolor_probable": "Por la operación combinada de ventas y taller con atención dominical en ventas, podría existir oportunidad de centralizar leads y citas fuera de horario de servicio.", "argumento": "Por la operación de postventa y ventas en Av. Universidad, sería valioso revisar cómo cubren leads y citas cuando el equipo está saturado o fuera de horario de taller.", "fuentes": ["https://www.hondauniversidad.mx/", "https://www.hondauniversidad.mx/horarios-y-direcciones", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 79, "prioridad": "Alta", "distancia_m": 214, "distancia_txt": "~214 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Honda%20Universidad%20Av.%20Universidad%201095%2C%20Col.%20Del%20Valle%20Centro%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 5}, {"id": "UNI-15", "nombre": "Automotores de México (AMSA Universidad)", "marca": "Stellantis (Jeep, Fiat, Dodge, Peugeot, Ram)", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones, multimarca", "grupo": "Automotores de México / dealer Stellantis", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1374, Col. Del Carmen / Viveros de Coyoacán, Alc. Coyoacán, CDMX, CP 04100", "lat": 19.357386, "lng": -99.1721403, "sitio_web": "https://automotoresdemexico.com.mx/", "pagina_sucursal": "https://automotoresdemexico.com.mx/", "telefono": "55 3599 7000", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "No confirmado en sitio", "horario_servicio": "No confirmado en sitio", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "No confirmado", "reseñas": "~1,700+", "calificacion": "4.5", "periodo_reseñas": "Agregador concesionariosdeautos (atribuido a Dodge); validar en Maps", "evidencias_dolor": "Operación multimarca Stellantis = alta complejidad de enrutamiento (ventas/servicio por marca). Volumen alto de reseñas. Citas online.", "capacidad": "Alta", "scores": {"necesidad": 19, "capacidad": 20, "afinidad": 17, "acceso": 11, "expansion": 6, "geo": 4}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Responsable de Contact Center", "dolor_probable": "Por operar varias marcas Stellantis en una plaza, podría existir oportunidad de enrutar llamadas y WhatsApp por marca/área sin saturación de recepción.", "argumento": "Por la operación multimarca Stellantis en AMSA Universidad, sería valioso revisar enrutamiento inteligente de llamadas y citas de servicio por marca.", "fuentes": ["https://automotoresdemexico.com.mx/", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Coyoacán Sur", "venta": "Sí", "puntaje": 77, "prioridad": "Alta", "distancia_m": 954, "distancia_txt": "~954 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Automotores%20de%20M%C3%A9xico%20%28AMSA%20Universidad%29%20Av.%20Universidad%201374%2C%20Col.%20Del%20Carmen%20/%20Viveros%20de%20Coyoac%C3%A1n%2C%20Alc.%20Coyoac%C3%A1n%2C%20CDMX%2C%20CP%2004100", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 6}, {"id": "UNI-17", "nombre": "Ford Cever Universidad", "marca": "Ford", "tipo_operacion": "Nuevos, seminuevos, servicio", "grupo": "Grupo Cever", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1951, Col. Oxtopulco Universidad, Alc. Coyoacán, CDMX, CP 04318", "lat": 19.3395415, "lng": -99.1823756, "sitio_web": "https://www.fordceveruniversidad.mx/", "pagina_sucursal": "https://www.fordceveruniversidad.mx/Contactanos/", "telefono": "55 9221 0000", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "No confirmado en home", "horario_servicio": "No confirmado en home", "postventa": "Sí", "taller": "Sí", "refacciones": "No confirmado", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Grupo Cever (email @cever.com.mx). Citas de servicio, cotizador y seminuevos en sitio. Más al sur del clúster Xoco (~2.8 km del centro); incluir en ruta sur o jornada separada.", "capacidad": "Alta", "scores": {"necesidad": 16, "capacidad": 22, "afinidad": 15, "acceso": 11, "expansion": 8, "geo": 2}, "solucion": "Ambas", "confianza": "Alto", "contacto": "Gerente de Postventa / Director de Operaciones Cever", "dolor_probable": "Por la operación Ford Cever con postventa y seminuevos, podría existir oportunidad de unificar atención telefónica y WhatsApp a nivel grupo.", "argumento": "Por la red Cever y la operación en Universidad 1951, sería valioso revisar un piloto de atención omnicanal para citas de servicio y leads.", "fuentes": ["https://www.fordceveruniversidad.mx/", "https://www.fordceveruniversidad.mx/Contactanos/"], "cluster": "Coyoacán Sur", "venta": "Sí", "puntaje": 74, "prioridad": "Media", "distancia_m": 3172, "distancia_txt": "~3172 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Ford%20Cever%20Universidad%20Av.%20Universidad%201951%2C%20Col.%20Oxtopulco%20Universidad%2C%20Alc.%20Coyoac%C3%A1n%2C%20CDMX%2C%20CP%2004318", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 7}, {"id": "UNI-14", "nombre": "Suzuki Universidad (Andrade)", "marca": "Suzuki", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Grupo Andrade", "grupo_confirmado": "Sí", "direccion": "Pitágoras 1326, Col. Letrán Valle, Alc. Benito Juárez, CDMX, CP 03650", "lat": 19.3715, "lng": -99.1548, "sitio_web": "https://www.suzukiuniversidad.com.mx/", "pagina_sucursal": "https://www.suzukiuniversidad.com.mx/horarios-y-direcciones", "telefono": "55 3690 9900", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–19:00 (aprox.; hay discrepancia menor entre páginas del sitio)", "horario_servicio": "L–V 7:00–13:30; Sáb 7:00–10:30", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Horario de servicio corto (cierra 13:30 L–V) = señal de cobertura limitada fuera de franja matutina. Grupo Andrade multi-sucursal. Coordenadas aproximadas (Nominatim sin hit).", "capacidad": "Alta", "scores": {"necesidad": 18, "capacidad": 20, "afinidad": 14, "acceso": 11, "expansion": 8, "geo": 2}, "solucion": "Agente Telefónico de IA", "confianza": "Medio", "contacto": "Gerente de Postventa / Director de Operaciones Andrade", "dolor_probable": "Por el horario reducido de taller, podría existir oportunidad de captar y agendar solicitudes telefónicas fuera de la franja de servicio.", "argumento": "Por el horario de servicio de Suzuki Universidad y la red Andrade, sería valioso revisar atención telefónica automática para citas fuera de la franja matutina.", "fuentes": ["https://www.suzukiuniversidad.com.mx/horarios-y-direcciones", "https://www.suzukiuniversidad.com.mx/nuestra-agencia", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Del Valle Norte", "venta": "Sí", "puntaje": 73, "prioridad": "Media", "distancia_m": 1782, "distancia_txt": "~1782 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Suzuki%20Universidad%20%28Andrade%29%20Pit%C3%A1goras%201326%2C%20Col.%20Letr%C3%A1n%20Valle%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003650", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": false, "ranking": 8}, {"id": "UNI-02", "nombre": "Acura Universidad", "marca": "Acura", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Grupo Superautos", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1095, Col. Del Valle Centro, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3646, "lng": -99.1691, "sitio_web": "https://www.acurauniversidad.mx/", "pagina_sucursal": "https://www.acurauniversidad.mx/horarios-y-direcciones", "telefono": "55 4163 1000", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–20:00; Sáb 9:00–18:00; Dom 10:00–18:00", "horario_servicio": "L–V 7:00–19:00; Sáb 7:00–15:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Misma plaza que Honda; ticket premium. Dolor operativo específico de Acura: No disponible públicamente. Oportunidad preferible escalada junto con Honda al grupo.", "capacidad": "Alta", "scores": {"necesidad": 14, "capacidad": 20, "afinidad": 15, "acceso": 11, "expansion": 7, "geo": 5}, "solucion": "Ambas", "confianza": "Medio", "contacto": "Gerente de Postventa / Director de Postventa del grupo", "dolor_probable": "Por operación premium compartida con Honda en la misma plaza, podría existir oportunidad de estandarizar atención telefónica y WhatsApp a nivel Grupo Superautos.", "argumento": "Sería valioso revisar con Superautos cómo unifican la atención de postventa Acura–Honda en Universidad para leads y citas de servicio.", "fuentes": ["https://www.acurauniversidad.mx/", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 72, "prioridad": "Media", "distancia_m": 218, "distancia_txt": "~218 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Acura%20Universidad%20Av.%20Universidad%201095%2C%20Col.%20Del%20Valle%20Centro%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 9}, {"id": "UNI-07", "nombre": "Hyundai Universidad (Kor)", "marca": "Hyundai", "tipo_operacion": "Nuevos, servicio, refacciones", "grupo": "Vehículos Kor S.A. de C.V.", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1087, Col. Del Valle Centro, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3651, "lng": -99.1687, "sitio_web": "https://hyundaidistribuidor.com.mx/universidad/", "pagina_sucursal": "https://hyundaidistribuidor.com.mx/universidad/contacto", "telefono": "55 1000 6300", "whatsapp_detectado": "Sí", "whatsapp_url": "https://wa.me/525510006324", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–20:00; Sáb 9:00–18:00; Dom 10:00–17:00", "horario_servicio": "No confirmado públicamente (citas vía WhatsApp 55 1000 6324)", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "WhatsApp publicado específicamente para citas de servicio (señal fuerte de canal manual). SEMOVI confirma Vehículos Kor en 1087.", "capacidad": "Media", "scores": {"necesidad": 19, "capacidad": 15, "afinidad": 17, "acceso": 12, "expansion": 4, "geo": 5}, "solucion": "WhatsApp Automatizado", "confianza": "Alto", "contacto": "Gerente de Servicio / Gerente de Postventa", "dolor_probable": "El uso de WhatsApp para citas de servicio sugiere dependencia de atención manual; existe potencial para automatizar confirmaciones y recordatorios.", "argumento": "Por el canal de WhatsApp ya publicado para citas Hyundai Universidad, sería valioso revisar automatización de agenda, confirmaciones y FAQs de servicio.", "fuentes": ["https://www.hyundai.com.mx/distribuidores/", "https://hyundaidistribuidor.com.mx/universidad/contacto", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 72, "prioridad": "Media", "distancia_m": 226, "distancia_txt": "~226 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Hyundai%20Universidad%20%28Kor%29%20Av.%20Universidad%201087%2C%20Col.%20Del%20Valle%20Centro%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": true, "ranking": 10}, {"id": "UNI-12", "nombre": "Mitsubishi Universidad (Samurái / Autofin)", "marca": "Mitsubishi", "tipo_operacion": "Nuevos, servicio (inferencia)", "grupo": "Grupo Autofin — Grupo Samurái", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 601, Col. Del Valle Centro / Letrán Valle, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3784191, "lng": -99.1601353, "sitio_web": "https://grupoautofin.com/unidad-automotriz", "pagina_sucursal": "https://grupoautofin.com/unidad-automotriz", "telefono": "55 9183 9002", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "No confirmado", "chat_web": "Inexistente", "horario_ventas": "No confirmado en fuente oficial accesible", "horario_servicio": "No confirmado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Confirmado en grupoautofin.com (Mitsubishi Universidad). SEMOVI email @grupoautofin.com. Sitio mitsubishi-universidad.mx suspendido (15-jul-2026). Capacidad alta vía grupo; dolor local no visible digitalmente.", "capacidad": "Alta", "scores": {"necesidad": 13, "capacidad": 23, "afinidad": 12, "acceso": 10, "expansion": 10, "geo": 3}, "solucion": "Ambas", "confianza": "Medio", "contacto": "Director de Postventa / Transformación Digital del grupo Autofin", "dolor_probable": "La debilidad del sitio local contrastada con la capacidad de Autofin sugiere que la decisión y el valor están a nivel grupo, no solo sucursal.", "argumento": "Por la red Autofin (Samurái/Pasión/Furia), sería valioso revisar un piloto de voz y WhatsApp que pueda replicarse desde Mitsubishi Universidad hacia otras agencias.", "fuentes": ["https://grupoautofin.com/unidad-automotriz", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Del Valle Norte", "venta": "Sí", "puntaje": 71, "prioridad": "Media", "distancia_m": 1783, "distancia_txt": "~1783 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Mitsubishi%20Universidad%20%28Samur%C3%A1i%20/%20Autofin%29%20Av.%20Universidad%20601%2C%20Col.%20Del%20Valle%20Centro%20/%20Letr%C3%A1n%20Valle%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 11}, {"id": "UNI-18", "nombre": "SEAT Furia México", "marca": "SEAT", "tipo_operacion": "Nuevos, servicio (inferencia)", "grupo": "Grupo Autofin — Grupo Furia", "grupo_confirmado": "Sí", "direccion": "Av. División del Norte 1917, Residencial Emperadores, Alc. Benito Juárez, CDMX, CP 03320", "lat": 19.3588, "lng": -99.1555, "sitio_web": "https://seat-furia.com.mx/", "pagina_sucursal": "https://seat-furia.com.mx/", "telefono": "55 5601 6380", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "No confirmado", "chat_web": "No confirmado", "horario_ventas": "No confirmado", "horario_servicio": "No confirmado", "postventa": "Sí", "taller": "Sí", "refacciones": "No confirmado", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Listada en grupoautofin.com como Furia México. Cercana al corredor (~1 km del eje Universidad vía laterales). Incluir si se prospecta Autofin en la misma jornada. Coordenadas aproximadas.", "capacidad": "Alta", "scores": {"necesidad": 12, "capacidad": 23, "afinidad": 12, "acceso": 9, "expansion": 10, "geo": 2}, "solucion": "Ambas", "confianza": "Medio", "contacto": "Director de Postventa Autofin / Gerente General Furia", "dolor_probable": "Oportunidad principalmente a nivel grupo Autofin; la sucursal sirve como puerta de entrada a Furia.", "argumento": "Por pertenecer a Autofin–Furia junto con Mazda/Mitsubishi del corredor, sería valioso alinear un piloto multi-sucursal de atención automatizada.", "fuentes": ["https://grupoautofin.com/unidad-automotriz", "https://seat-furia.com.mx/"], "cluster": "División del Norte", "venta": "Sí", "puntaje": 68, "prioridad": "Media", "distancia_m": 1777, "distancia_txt": "~1777 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=SEAT%20Furia%20M%C3%A9xico%20Av.%20Divisi%C3%B3n%20del%20Norte%201917%2C%20Residencial%20Emperadores%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003320", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": true, "ranking": 12}, {"id": "UNI-13", "nombre": "Renault Universidad (GOCAR)", "marca": "Renault", "tipo_operacion": "Nuevos, seminuevos, servicio, refacciones", "grupo": "Grupo GOCAR", "grupo_confirmado": "Sí", "direccion": "Gabriel Mancera 1629, Col. Del Valle Sur, Alc. Benito Juárez, CDMX, CP 03104", "lat": 19.3685, "lng": -99.164, "sitio_web": "https://www.renaultuniversidad.com/", "pagina_sucursal": "https://www.renaultuniversidad.com/contactanos/agenda-una-prueba-de-manejo", "telefono": "55 9088 0289", "whatsapp_detectado": "Sí", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 9:00–19:00; S–D 9:00–17:00", "horario_servicio": "L–V 8:00–19:00; Sáb 8:00–17:00", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "Sí", "pruebas_manejo": "Sí", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Fuera del eje exacto pero caminable (~500–800 m). Formulario WhatsApp en sitio. Postventa activa. Coordenadas aproximadas (Nominatim sin número exacto).", "capacidad": "Media", "scores": {"necesidad": 15, "capacidad": 16, "afinidad": 15, "acceso": 11, "expansion": 6, "geo": 3}, "solucion": "WhatsApp Automatizado", "confianza": "Medio", "contacto": "Gerente de Postventa / Gerente Comercial", "dolor_probable": "Existe potencial para formalizar el flujo WhatsApp ya presente y cubrir citas/leads fuera de horario.", "argumento": "Por la operación Renault GOCAR cerca de Universidad con canal WhatsApp, sería valioso revisar automatización de citas y seguimiento comercial.", "fuentes": ["https://www.renaultuniversidad.com/", "https://www.renaultuniversidad.com/cotiza-hoy"], "cluster": "Del Valle Norte", "venta": "Sí", "puntaje": 66, "prioridad": "Media", "distancia_m": 762, "distancia_txt": "~762 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Renault%20Universidad%20%28GOCAR%29%20Gabriel%20Mancera%201629%2C%20Col.%20Del%20Valle%20Sur%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003104", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": true, "ranking": 13}, {"id": "UNI-06", "nombre": "GWM Universidad (Autocom)", "marca": "GWM", "tipo_operacion": "Nuevos, servicio, refacciones", "grupo": "GWM Autocom (independiente)", "grupo_confirmado": "No confirmado", "direccion": "Av. Universidad 1070, Col. Xoco / zona contigua, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.3654, "lng": -99.1684, "sitio_web": "https://www.gwm-universidad.mx/", "pagina_sucursal": "https://www.gwm-universidad.mx/hours.aspx", "telefono": "800 953 0255", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "Sí", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "L–V 8:00–20:00; Sáb 8:00–18:00; Dom 10:00–17:00", "horario_servicio": "L–V 8:00–20:00; Sáb 8:00–14:00; Dom cerrado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Marca en expansión con postventa y citas online. Capacidad de inversión menos clara que grupos nacionales. Coordenadas aproximadas (Nominatim sin nodo exacto 1070).", "capacidad": "Media", "scores": {"necesidad": 14, "capacidad": 14, "afinidad": 14, "acceso": 10, "expansion": 3, "geo": 5}, "solucion": "WhatsApp Automatizado", "confianza": "Medio", "contacto": "Gerente General / Gerente de Servicio", "dolor_probable": "Como agencia de marca en crecimiento, podría existir oportunidad de formalizar respuesta a leads y citas sin depender solo de formularios web.", "argumento": "Por la operación de GWM en Universidad con citas de servicio en línea, sería valioso revisar continuidad de atención en WhatsApp fuera de horario.", "fuentes": ["https://www.gwm-universidad.mx/", "https://www.gwm-universidad.mx/hours.aspx"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 60, "prioridad": "Media", "distancia_m": 246, "distancia_txt": "~246 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=GWM%20Universidad%20%28Autocom%29%20Av.%20Universidad%201070%2C%20Col.%20Xoco%20/%20zona%20contigua%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": true, "ranking": 14}, {"id": "UNI-16", "nombre": "AutoPrice Universidad (United Auto)", "marca": "Seminuevos multimarca", "tipo_operacion": "Seminuevos multimarca", "grupo": "Grupo United Auto", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1320, Col. Del Carmen, Alc. Coyoacán, CDMX, CP 04100", "lat": 19.3595, "lng": -99.171, "sitio_web": "https://autoprice.com.mx/", "pagina_sucursal": "https://autoprice.com.mx/", "telefono": "55 5726 9900", "whatsapp_detectado": "Sí", "whatsapp_url": "https://wa.me/525569437226", "citas_servicio": "No", "formulario": "Sí", "chat_web": "Inexistente", "horario_ventas": "No confirmado en sitio", "horario_servicio": "N/A", "postventa": "No", "taller": "No confirmado", "refacciones": "No", "seminuevos": "Sí", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "WhatsApp 55 6943 7226 publicado. Enfoque seminuevos (menor afinidad a citas de taller OEM). SEMOVI: Automotriz Internacional + Italusa en 1320. Coordenadas aproximadas.", "capacidad": "Media", "scores": {"necesidad": 12, "capacidad": 14, "afinidad": 11, "acceso": 11, "expansion": 5, "geo": 4}, "solucion": "WhatsApp Automatizado", "confianza": "Medio", "contacto": "Gerente Comercial / Gerente de CRM", "dolor_probable": "Existe potencial para calificar y dar seguimiento automático a leads de seminuevos vía WhatsApp.", "argumento": "Por el WhatsApp comercial ya publicado en AutoPrice Universidad, sería valioso revisar automatización de calificación de prospectos de seminuevos.", "fuentes": ["https://autoprice.com.mx/", "https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Coyoacán Sur", "venta": "Sí", "puntaje": 57, "prioridad": "Media", "distancia_m": 707, "distancia_txt": "~707 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=AutoPrice%20Universidad%20%28United%20Auto%29%20Av.%20Universidad%201320%2C%20Col.%20Del%20Carmen%2C%20Alc.%20Coyoac%C3%A1n%2C%20CDMX%2C%20CP%2004100", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": true, "ranking": 15}, {"id": "UNI-10", "nombre": "Ford CAMSA Universidad", "marca": "Ford", "tipo_operacion": "Nuevos, servicio (inferencia concesionario Ford)", "grupo": "CAMSA S.A. de C.V.", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1005, Col. Del Valle Centro, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3705, "lng": -99.1652, "sitio_web": "http://fordcamsa.mx/", "pagina_sucursal": "", "telefono": "55 3000 0900", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "No confirmado", "chat_web": "No confirmado", "horario_ventas": "No confirmado en fuente oficial accesible", "horario_servicio": "No confirmado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "SEMOVI confirma CAMSA en 1005, email @fordcamsa.com.mx. Sitio fordcamsa.mx: 403 al 15-jul-2026. Capacidad y dolores: validación presencial requerida. Coordenadas aproximadas.", "capacidad": "Media", "scores": {"necesidad": 12, "capacidad": 14, "afinidad": 11, "acceso": 8, "expansion": 3, "geo": 4}, "solucion": "Agente Telefónico de IA", "confianza": "Bajo", "contacto": "Gerente General / Gerente de Postventa", "dolor_probable": "Hipótesis con confianza baja: canal digital limitado podría indicar dependencia telefónica; validar en visita.", "argumento": "Por la operación Ford CAMSA en Av. Universidad, sería valioso revisar cómo atienden llamadas de servicio y ventas cuando el equipo está ocupado.", "fuentes": ["https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Del Valle Norte", "venta": "Sí", "puntaje": 52, "prioridad": "Media", "distancia_m": 774, "distancia_txt": "~774 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Ford%20CAMSA%20Universidad%20Av.%20Universidad%201005%2C%20Col.%20Del%20Valle%20Centro%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": true, "potencial_wa": false, "ranking": 16}, {"id": "UNI-11", "nombre": "Peugeot Universidad (AFU)", "marca": "Peugeot", "tipo_operacion": "Nuevos, servicio (inferencia)", "grupo": "Automotriz Francesa Universidad (AFU)", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1001, Col. Del Valle Centro, Alc. Benito Juárez, CDMX, CP 03100", "lat": 19.3708, "lng": -99.165, "sitio_web": "https://www.peugeotuniversidad.com.mx/", "pagina_sucursal": "", "telefono": "55 3000 1300", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "No confirmado", "chat_web": "No confirmado", "horario_ventas": "No confirmado", "horario_servicio": "No confirmado", "postventa": "Sí", "taller": "Sí", "refacciones": "Sí", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "SEMOVI: AUTOMOTRIZ FRANCESA UNIVERSIDAD en 1001. Sitio peugeotuniversidad.com.mx: 403. Nota: Nominatim asocia 1951 históricamente a Peugeot; hoy 1951 opera Ford Cever — posible mudanza. Validar sede activa.", "capacidad": "Media", "scores": {"necesidad": 11, "capacidad": 12, "afinidad": 10, "acceso": 7, "expansion": 2, "geo": 4}, "solucion": "Baja afinidad", "confianza": "Bajo", "contacto": "Gerente General", "dolor_probable": "Evidencia insuficiente hasta validar operación y canales en sitio.", "argumento": "Pendiente de confirmar operación activa en 1001 antes de una propuesta comercial.", "fuentes": ["https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras"], "cluster": "Del Valle Norte", "venta": "Sí", "puntaje": 46, "prioridad": "Baja", "distancia_m": 812, "distancia_txt": "~812 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=Peugeot%20Universidad%20%28AFU%29%20Av.%20Universidad%201001%2C%20Col.%20Del%20Valle%20Centro%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003100", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": false, "ranking": 17}, {"id": "UNI-09", "nombre": "JAC Universidad", "marca": "JAC", "tipo_operacion": "Nuevos (servicio: inferencia)", "grupo": "Vehículos Orientales Universidad S.A. de C.V.", "grupo_confirmado": "Sí", "direccion": "Av. Universidad 1144, Col. Xoco, Alc. Benito Juárez, CDMX, CP 03330", "lat": 19.3632, "lng": -99.16955, "sitio_web": "https://www.jacuniversidad.mx/", "pagina_sucursal": "https://www.autocosmos.com.mx/universidadjac", "telefono": "55 3600 0000", "whatsapp_detectado": "No confirmado", "whatsapp_url": "", "citas_servicio": "No confirmado", "formulario": "No confirmado", "chat_web": "No confirmado", "horario_ventas": "No confirmado", "horario_servicio": "No confirmado", "postventa": "No confirmado", "taller": "No confirmado", "refacciones": "No confirmado", "seminuevos": "No confirmado", "pruebas_manejo": "No confirmado", "reseñas": "No disponible públicamente", "calificacion": "No disponible públicamente", "periodo_reseñas": "N/A", "evidencias_dolor": "Sitio jacuniversidad.mx devolvió 403 (15-jul-2026). SEMOVI y Autocosmos confirman presencia en 1144. Evidencia digital débil; validar operación en sitio.", "capacidad": "Baja", "scores": {"necesidad": 8, "capacidad": 8, "afinidad": 6, "acceso": 6, "expansion": 2, "geo": 5}, "solucion": "Baja afinidad", "confianza": "Bajo", "contacto": "Gerente General", "dolor_probable": "No hay evidencia pública suficiente de dolor operativo.", "argumento": "Pendiente de validación presencial de operación y canales digitales.", "fuentes": ["https://www.semovi.cdmx.gob.mx/tramites-y-servicios/vehiculos-particulares/placas/alta-de-placas-de-vehiculo-nuevo/directorio-de-agencias-distribuidoras", "https://www.autocosmos.com.mx/universidadjac"], "cluster": "Xoco Núcleo", "venta": "Sí", "puntaje": 35, "prioridad": "Baja", "distancia_m": 319, "distancia_txt": "~319 m del punto de referencia (19.3659,-99.1707)", "google_maps": "https://www.google.com/maps/search/?api=1&query=JAC%20Universidad%20Av.%20Universidad%201144%2C%20Col.%20Xoco%2C%20Alc.%20Benito%20Ju%C3%A1rez%2C%20CDMX%2C%20CP%2003330", "fecha_consulta": "2026-07-15", "potencial_voz": false, "potencial_wa": false, "ranking": 18}], "clusters": {"Xoco Núcleo": {"inicio": "Honda/Acura Universidad 1095", "fin": "Chevrolet El Trébol 1144 o Nissan Popocatépetl 512", "orden_ids": ["UNI-03", "UNI-04", "UNI-05", "UNI-01", "UNI-02", "UNI-07", "UNI-08", "UNI-06", "UNI-09"], "dist_km": 1.2, "caminata_min": 20, "tiempo_comercial_min": 25, "prioridad": "Alta"}, "Del Valle Norte": {"inicio": "Mitsubishi Universidad 601", "fin": "Suzuki Pitágoras 1326 o Renault Mancera", "orden_ids": ["UNI-12", "UNI-10", "UNI-11", "UNI-13", "UNI-14"], "dist_km": 1.8, "caminata_min": 30, "tiempo_comercial_min": 20, "prioridad": "Media"}, "Coyoacán Sur": {"inicio": "AutoPrice 1320", "fin": "Ford Cever 1951", "orden_ids": ["UNI-16", "UNI-15", "UNI-17"], "dist_km": 2.6, "caminata_min": 40, "tiempo_comercial_min": 25, "prioridad": "Alta"}, "División del Norte": {"inicio": "SEAT Furia 1917", "fin": "SEAT Furia 1917", "orden_ids": ["UNI-18"], "dist_km": 0.2, "caminata_min": 5, "tiempo_comercial_min": 25, "prioridad": "Media"}}, "rutas": {"principal": {"nombre": "Ruta recomendada por proximidad y prioridad comercial — Día 1 Xoco", "descripcion": "Prioriza Toyota, Nissan Soni, Mazda Autofin, Honda/Acura, Hyundai, Chevrolet El Trébol en el núcleo caminable.", "orden_ids": ["UNI-03", "UNI-04", "UNI-05", "UNI-01", "UNI-08", "UNI-07", "UNI-02", "UNI-06"], "maps": "https://www.google.com/maps/dir/?api=1&origin=Av+Universidad+1112+CDMX&destination=Av+Universidad+1144+CDMX&travelmode=walking&waypoints=Popocatepetl+512+Xoco|Av+Universidad+1090+CDMX|Av+Universidad+1095+CDMX|Av+Universidad+1087+CDMX"}, "secundaria": {"nombre": "Ruta secundaria — Del Valle Norte + Andrade", "descripcion": "Mitsubishi Autofin, CAMSA, AFU, Renault GOCAR, Suzuki Andrade.", "orden_ids": ["UNI-12", "UNI-10", "UNI-11", "UNI-13", "UNI-14"], "maps": "https://www.google.com/maps/dir/?api=1&origin=Av+Universidad+601+CDMX&destination=Pitagoras+1326+CDMX&travelmode=walking&waypoints=Av+Universidad+1005+CDMX|Gabriel+Mancera+1629+CDMX"}, "prioridad_alta": {"nombre": "Ruta exclusiva prioridad alta", "descripcion": "Solo agencias con puntaje ≥75, ordenadas por proximidad en dos tramos (Xoco + Coyoacán).", "orden_ids": ["UNI-03", "UNI-04", "UNI-05", "UNI-01", "UNI-08", "UNI-15", "UNI-17"], "maps": "https://www.google.com/maps/dir/?api=1&origin=Av+Universidad+1112+CDMX&destination=Av+Universidad+1951+CDMX&travelmode=walking&waypoints=Popocatepetl+512+Xoco|Av+Universidad+1090+CDMX|Av+Universidad+1095+CDMX|Av+Universidad+1144+CDMX|Av+Universidad+1374+CDMX"}}};
+const LS_KEY = "geoint_universidad_v1";
+const agencias = DATA.agencias;
+const state = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+
+function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function getLocal(id){
+  if(!state[id]) state[id] = {status:"Pendiente", notes:"", visited:false};
+  return state[id];
+}
+
+const colorPri = {Alta:"#ff5c33", Media:"#f0b429", Baja:"#5b8def"};
+
+const map = L.map("map", {zoomControl:true}).setView([DATA.meta.punto_referencia.lat, DATA.meta.punto_referencia.lng], 15);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution: "&copy; OpenStreetMap &copy; CARTO", maxZoom: 19
+}).addTo(map);
+
+const clusterGroup = L.markerClusterGroup({showCoverageOnHover:false, maxClusterRadius:40});
+let heatLayer = null;
+const markersById = {};
+
+function fillSelect(id, values){
+  const el = document.getElementById(id);
+  [...new Set(values)].sort().forEach(v=>{
+    if(!v) return;
+    const o=document.createElement("option"); o.value=v; o.textContent=v; el.appendChild(o);
+  });
+}
+fillSelect("f-marca", agencias.map(a=>a.marca));
+fillSelect("f-grupo", agencias.map(a=>a.grupo.split("—")[0].trim()));
+fillSelect("f-cluster", agencias.map(a=>a.cluster));
+
+document.getElementById("exec-summary").innerHTML =
+  `<strong>${agencias.length} agencias</strong> investigadas · ` +
+  `<strong>${agencias.filter(a=>a.prioridad==="Alta").length} prioridad alta</strong> · ` +
+  `Grupos clave: Autofin, Superautos, Autos Soni, Cever, Andrade, GOCAR, AMSA · ` +
+  `Mejor clúster caminable: <strong>Xoco Núcleo</strong> · ` +
+  `Validar presencialmente operaciones con sitio 403 (CAMSA, AFU, JAC) y decisor de grupo.`;
+
+document.getElementById("method").innerHTML =
+  `<p>Scoring 0–100 = Necesidad (25) + Capacidad (25) + Afinidad (20) + Acceso (15) + Expansión (10) + Geo (5). ` +
+  `Fuentes: SEMOVI, sitios oficiales, directorios de marca, Autofin. ` +
+  `Limitaciones: ${DATA.meta.limitaciones.join(" · ")}</p>`;
+
+function passes(a){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const pri = document.getElementById("f-pri").value;
+  const marca = document.getElementById("f-marca").value;
+  const grupo = document.getElementById("f-grupo").value;
+  const cap = document.getElementById("f-cap").value;
+  const sol = document.getElementById("f-sol").value;
+  const cluster = document.getElementById("f-cluster").value;
+  const conf = document.getElementById("f-conf").value;
+  const scoreMin = Number(document.getElementById("f-score").value||0);
+  if(q){
+    const blob = (a.nombre+" "+a.marca+" "+a.grupo).toLowerCase();
+    if(!blob.includes(q)) return false;
+  }
+  if(pri && a.prioridad!==pri) return false;
+  if(marca && a.marca!==marca) return false;
+  if(grupo && !a.grupo.includes(grupo)) return false;
+  if(cap && a.capacidad!==cap) return false;
+  if(sol && a.solucion!==sol) return false;
+  if(cluster && a.cluster!==cluster) return false;
+  if(conf && a.confianza!==conf) return false;
+  if(a.puntaje < scoreMin) return false;
+  if(document.getElementById("f-venta").checked && a.venta!=="Sí") return false;
+  if(document.getElementById("f-semi").checked && a.seminuevos!=="Sí") return false;
+  if(document.getElementById("f-pv").checked && a.postventa!=="Sí") return false;
+  if(document.getElementById("f-taller").checked && a.taller!=="Sí") return false;
+  if(document.getElementById("f-ref").checked && a.refacciones!=="Sí") return false;
+  if(document.getElementById("f-citas").checked && a.citas_servicio!=="Sí") return false;
+  if(document.getElementById("f-wa").checked && a.whatsapp_detectado!=="Sí") return false;
+  return true;
+}
+
+function filtered(){ return agencias.filter(passes); }
+
+function updateStats(list){
+  const set = (id,v)=> document.getElementById(id).textContent = v;
+  set("s-total", list.length);
+  set("s-alta", list.filter(a=>a.prioridad==="Alta").length);
+  set("s-media", list.filter(a=>a.prioridad==="Media").length);
+  set("s-baja", list.filter(a=>a.prioridad==="Baja").length);
+  set("s-pv", list.filter(a=>a.postventa==="Sí").length);
+  set("s-wa", list.filter(a=>a.whatsapp_detectado==="Sí").length);
+  set("s-citas", list.filter(a=>a.citas_servicio==="Sí").length);
+  set("s-voz", list.filter(a=>a.potencial_voz).length);
+  set("s-ambas", list.filter(a=>a.solucion==="Ambas").length);
+  set("s-grupos", new Set(list.map(a=>a.grupo.split("—")[0].trim())).size);
+  set("s-avg", list.length ? Math.round(list.reduce((s,a)=>s+a.puntaje,0)/list.length) : 0);
+  set("s-caph", list.filter(a=>a.capacidad==="Alta").length);
+  document.getElementById("cards-count").textContent = `(${list.length} visibles)`;
+}
+
+function markerIcon(pri){
+  const c = colorPri[pri]||"#5b8def";
+  return L.divIcon({
+    className:"",
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 0 10px ${c}"></div>`,
+    iconSize:[14,14], iconAnchor:[7,7]
+  });
+}
+
+function renderMap(list){
+  clusterGroup.clearLayers();
+  if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; }
+  const heat = [];
+  list.forEach(a=>{
+    const m = L.marker([a.lat,a.lng], {icon:markerIcon(a.prioridad)});
+    m.bindPopup(`<div class="popup"><h3>${a.nombre}</h3>
+      <p>${a.marca} · ${a.prioridad} · ${a.puntaje} pts</p>
+      <p>${a.solucion}</p>
+      <p><a href="${a.google_maps}" target="_blank" rel="noopener">Google Maps</a></p></div>`);
+    m.on("click", ()=> focusCard(a.id));
+    markersById[a.id]=m;
+    clusterGroup.addLayer(m);
+    heat.push([a.lat, a.lng, a.puntaje/100]);
+  });
+  map.addLayer(clusterGroup);
+  if(heat.length){
+    heatLayer = L.heatLayer(heat, {radius:38, blur:22, maxZoom:17, gradient:{0.3:"#5b8def",0.55:"#f0b429",0.8:"#ff5c33"}});
+    heatLayer.addTo(map);
+  }
+}
+
+function focusCard(id){
+  document.querySelectorAll(".agency-card").forEach(c=>c.classList.remove("active"));
+  const el = document.getElementById("card-"+id);
+  if(el){ el.classList.add("active"); el.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+  const a = agencias.find(x=>x.id===id);
+  if(a && markersById[id]){ map.setView([a.lat,a.lng], 16); markersById[id].openPopup(); }
+}
+
+function renderCards(list){
+  const root = document.getElementById("cards");
+  root.innerHTML = "";
+  list.forEach(a=>{
+    const loc = getLocal(a.id);
+    const div = document.createElement("div");
+    div.className = `agency-card ${a.prioridad}`;
+    div.id = "card-"+a.id;
+    div.innerHTML = `
+      <div class="row1"><div class="title">${a.nombre}</div><div class="score">${a.puntaje}</div></div>
+      <div><span class="badge ${a.prioridad}">${a.prioridad}</span> · <span class="meta">${a.marca}</span></div>
+      <div class="meta">${a.grupo}</div>
+      <div class="muted">${a.direccion}</div>
+      <div class="meta"><strong>Capacidad:</strong> ${a.capacidad} · <strong>Solución:</strong> ${a.solucion}</div>
+      <div class="muted"><strong>Dolor:</strong> ${a.dolor_probable}</div>
+      <div class="muted"><strong>Evidencia:</strong> ${a.evidencias_dolor.slice(0,180)}…</div>
+      <div class="meta">Servicios: PV ${a.postventa} · Taller ${a.taller} · Seminuevos ${a.seminuevos} · Citas ${a.citas_servicio} · WA ${a.whatsapp_detectado}</div>
+      <div class="muted"><strong>Contacto:</strong> ${a.contacto}</div>
+      <div class="muted"><strong>Argumento:</strong> ${a.argumento}</div>
+      <div class="muted">Confianza: ${a.confianza} · Cluster: ${a.cluster}</div>
+      <div class="card-actions">
+        <button type="button" data-act="center">Centrar mapa</button>
+        <a href="${a.google_maps}" target="_blank" rel="noopener">Google Maps</a>
+        ${a.sitio_web?`<a href="${a.sitio_web}" target="_blank" rel="noopener">Sitio</a>`:""}
+        ${a.whatsapp_url?`<a href="${a.whatsapp_url}" target="_blank" rel="noopener">WhatsApp</a>`:""}
+        ${a.telefono?`<span class="meta">${a.telefono}</span>`:""}
+        <button type="button" data-act="visited">${loc.visited?"✓ Visitada":"Marcar visitada"}</button>
+        <select data-act="status">
+          ${["Pendiente","Visitada","Contactada","Cita","Propuesta","Descartada"].map(s=>`<option ${loc.status===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+        <textarea data-act="notes" placeholder="Notas de campo…">${loc.notes||""}</textarea>
+      </div>`;
+    div.querySelector('[data-act="center"]').onclick = ()=> focusCard(a.id);
+    div.querySelector('[data-act="visited"]').onclick = (e)=>{
+      const L=getLocal(a.id); L.visited=!L.visited; if(L.visited) L.status="Visitada"; saveState(); render();
+    };
+    div.querySelector('[data-act="status"]').onchange = (e)=>{ getLocal(a.id).status=e.target.value; saveState(); };
+    div.querySelector('[data-act="notes"]').onchange = (e)=>{ getLocal(a.id).notes=e.target.value; saveState(); };
+    root.appendChild(div);
+  });
+}
+
+let sortKey="ranking", sortDir=1;
+function renderTable(list){
+  const tb = document.querySelector("#tabla tbody");
+  const sorted = [...list].sort((a,b)=>{
+    const va=a[sortKey], vb=b[sortKey];
+    if(typeof va==="number") return (va-vb)*sortDir;
+    return String(va).localeCompare(String(vb),"es")*sortDir;
+  });
+  tb.innerHTML = sorted.map(a=>`<tr data-id="${a.id}">
+    <td>${a.ranking}</td><td>${a.puntaje}</td><td>${a.prioridad}</td>
+    <td>${a.nombre}</td><td>${a.marca}</td><td>${a.grupo.split("—")[0].trim()}</td>
+    <td>${a.solucion}</td><td>${a.capacidad}</td><td>${a.cluster}</td><td>${a.confianza}</td>
+  </tr>`).join("");
+  tb.querySelectorAll("tr").forEach(tr=> tr.onclick=()=> focusCard(tr.dataset.id));
+}
+document.querySelectorAll("#tabla th").forEach(th=>{
+  th.onclick=()=>{ const k=th.dataset.k; if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=1;} render(); };
+});
+
+function renderRoutes(){
+  const root=document.getElementById("routes");
+  root.innerHTML="";
+  Object.entries(DATA.rutas).forEach(([key,r])=>{
+    const names = r.orden_ids.map(id=> (agencias.find(a=>a.id===id)||{}).nombre).filter(Boolean);
+    const card=document.createElement("div");
+    card.className="route-card";
+    card.innerHTML=`<h4>${r.nombre}</h4><p>${r.descripcion}</p><p style="margin-top:.4rem">${names.join(" → ")}</p>
+      <div class="card-actions" style="margin-top:.5rem"><a href="${r.maps}" target="_blank" rel="noopener">Abrir ruta Maps</a>
+      <button type="button">Ver en mapa</button></div>`;
+    card.querySelector("button").onclick=()=>{
+      const pts = r.orden_ids.map(id=>agencias.find(a=>a.id===id)).filter(Boolean);
+      if(pts.length) map.fitBounds(L.latLngBounds(pts.map(p=>[p.lat,p.lng])), {padding:[40,40]});
+    };
+    root.appendChild(card);
+  });
+  Object.entries(DATA.clusters).forEach(([name,c])=>{
+    const card=document.createElement("div");
+    card.className="route-card";
+    const names=c.orden_ids.map(id=>(agencias.find(a=>a.id===id)||{}).nombre).filter(Boolean);
+    card.innerHTML=`<h4>Clúster: ${name}</h4><p>Prioridad ${c.prioridad} · ~${c.dist_km} km · ~${c.caminata_min + names.length*c.tiempo_comercial_min} min totales</p>
+      <p>${names.join(" → ")}</p>`;
+    root.appendChild(card);
+  });
+}
+
+function render(){
+  const list = filtered();
+  updateStats(list);
+  renderMap(list);
+  renderCards(list);
+  renderTable(list);
+}
+
+document.getElementById("filters").addEventListener("input", render);
+document.getElementById("filters").addEventListener("change", render);
+document.querySelectorAll("[data-quick]").forEach(btn=>{
+  btn.onclick=()=>{
+    document.getElementById("btn-reset").click();
+    const q=btn.dataset.quick;
+    if(q==="alta") document.getElementById("f-pri").value="Alta";
+    if(q==="xoco") document.getElementById("f-cluster").value="Xoco Núcleo";
+    if(q==="autofin") document.getElementById("q").value="Autofin";
+    render();
+  };
+});
+document.getElementById("btn-reset").onclick=()=>{
+  document.getElementById("q").value="";
+  ["f-pri","f-marca","f-grupo","f-cap","f-sol","f-cluster","f-conf"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-score").value=0;
+  ["f-venta","f-semi","f-pv","f-taller","f-ref","f-citas","f-wa"].forEach(id=>document.getElementById(id).checked=false);
+  render();
+};
+document.getElementById("btn-fit").onclick=()=>{
+  const list=filtered();
+  if(list.length) map.fitBounds(L.latLngBounds(list.map(a=>[a.lat,a.lng])), {padding:[40,40]});
+};
+document.getElementById("btn-csv").onclick=()=>{
+  const list=filtered();
+  const cols=["ranking","puntaje","prioridad","nombre","marca","grupo","direccion","lat","lng","sitio_web","google_maps","telefono","whatsapp_detectado","postventa","citas_servicio","solucion","capacidad","contacto","argumento","confianza","cluster"];
+  const lines=[cols.join(",")].concat(list.map(a=>cols.map(c=>`"${String(a[c]??"").replace(/"/g,'""')}"`).join(",")));
+  const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="avenida_universidad_filtrado.csv"; a.click(); URL.revokeObjectURL(url);
+};
+
+renderRoutes();
+render();
+setTimeout(()=>map.invalidateSize(), 200);
+</script>
+</body>
+</html>
